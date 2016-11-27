@@ -44,7 +44,10 @@ app.get('/', function(req, res){
 app.get('/persona', function(req, res){
 	getPersona(req.query.code ,function(recordset){
 		console.log(recordset);
-		res.send(recordset);
+		var json = {};
+		json.persona = recordset;
+		res.send(json);
+		//res.send(recordset);
 	});
 });
 
@@ -52,7 +55,21 @@ app.get('/persona', function(req, res){
 app.get('/equipo', function(req, res){
 	getEquipo(function(recordset){
 		console.log(recordset);
-		res.send(recordset);
+		var json = {};
+		json.equipo = recordset;
+		res.send(json);
+		//res.send(recordset);
+	});
+});
+
+//Obetener todos los equipos registrados a un evento especifico
+app.get('/equipo/evento', function(req, res){
+	getEquipo(req.query.nombre, function(recordset){
+		console.log(recordset);
+		var json = {};
+		json.equipo = recordset;
+		res.send(json);
+		//res.send(recordset);
 	});
 });
 
@@ -60,7 +77,10 @@ app.get('/equipo', function(req, res){
 app.get('/equipo/nombre', function(req, res){
 	getEquipoNombre(req.query.nombre,function(recordset){
 		console.log(recordset);
-		res.send(recordset);
+		var json = {};
+		json.equipo = recordset;
+		res.send(json);
+		//res.send(recordset);
 	});
 });
 
@@ -68,7 +88,10 @@ app.get('/equipo/nombre', function(req, res){
 app.get('/evento', function(req, res){
 	getEvento(function(recordset){
 		console.log(recordset);
-		res.send(recordset);
+		var json = {};
+		json.evento = recordset;
+		res.send(json);
+		//res.send(recordset);
 	});
 });
 
@@ -76,7 +99,10 @@ app.get('/evento', function(req, res){
 app.get('/evento/disciplina', function(req, res){
 	getEventoDisciplina(req.query.disciplina,function(recordset){
 		console.log(recordset);
-		res.send(recordset);
+		var json = {};
+		json.evento = recordset;
+		res.send(json);
+		//res.send(recordset);
 	});
 });
 
@@ -84,7 +110,10 @@ app.get('/evento/disciplina', function(req, res){
 app.get('/evento/nombre', function(req, res){
 	getEventoNombre(req.query.nombre,function(recordset){
 		console.log(recordset);
-		res.send(recordset);
+		var json = {};
+		json.evento = recordset;
+		res.send(json);
+		//res.send(recordset);
 	});
 });
 
@@ -92,7 +121,10 @@ app.get('/evento/nombre', function(req, res){
 app.get('/hora', function(req, res){
 	getHora(function(recordset){
 		console.log(recordset);
-		res.send(recordset);
+		var json = {};
+		json.hora = recordset;
+		res.send(json);
+		//res.send(recordset);
 	});
 });
 
@@ -111,7 +143,10 @@ app.get('/partido', function(req, res){
 			j++;
 		}
 		console.log(response);
-		res.send(response);
+		var json = {};
+		json.partido = response;
+		res.send(json);
+		//res.send(response);
 	});
 });
 
@@ -120,7 +155,11 @@ app.get('/partido/nombre', function(req, res){
 	//Request contiene dos nombres, uno de cada equipo
 	getPartidoNombre(req.query.nombre1,req.query.nombre2,function(recordset){
 		console.log(recordset);
-		res.send(recordset);
+		var json = {};
+		json.partido = recordset;
+		res.send(json);
+		//res.send(recordset);
+
 	});
 });
 
@@ -128,6 +167,9 @@ app.get('/partido/nombre', function(req, res){
 app.get('/disciplina', function(req, res){
 	getDisciplinas(function(recordset){
 		console.log(recordset);
+		var json = {};
+		json.disciplina = recordset;
+		res.send(json);
 	});
 });
 
@@ -135,6 +177,9 @@ app.get('/disciplina', function(req, res){
 app.get('/disciplina/nombre', function(req, res){
 	getDisciplina(function(recordset){
 		console.log(recordset);
+		var json = {};
+		json.disciplina = recordset;
+		res.send(json);
 	});
 });
 
@@ -145,7 +190,7 @@ app.get('/disciplina/nombre', function(req, res){
 //	});
 //});
 
-//
+//Llega el nombre del evento al que se va a registrar
 app.post('/equipo', function(req, res){
 	insertEquipo(req.body, function(recordset){
 		console.log(recordset);
@@ -158,7 +203,7 @@ app.post('/evento', function(req, res){
 	});
 });
 
-app.get('/hora', function(req, res){
+app.post('/hora', function(req, res){
 	insertHora(req.body, function(recordset){
 		console.log(recordset);
 	});
@@ -295,7 +340,7 @@ function getEvento(callback )
 		else
 		{
 			var request = new sql.Request(connection);
-			request.query("Select * from Evento", function(err, recordset){
+			request.query("Select idEvento, nombre from Evento", function(err, recordset){
 				callback(recordset);
 				if (err) {
        				console.log(err);
@@ -318,7 +363,7 @@ function getEventoDisciplina(disciplina, callback )
 		else
 		{
 			var request = new sql.Request(connection);
-			request.query("Select * from Evento where Evento.idDisciplina = (select Disciplina.idDisciplina from Disciplina where Disciplina.nombre like '%" +disciplina+ "%')", function(err, recordset){
+			request.query("Select idEvento, Nombre from Evento where Evento.idDisciplina = (select Disciplina.idDisciplina from Disciplina where Disciplina.nombre like '%" +disciplina+ "%')", function(err, recordset){
 				callback(recordset);
 				if (err) {
        				console.log(err);
