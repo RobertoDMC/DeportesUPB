@@ -40,13 +40,18 @@ app.get('/', function(req, res){
 			res.end();
 });
 
+//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+//Metodos GETS
+//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+
 //Devuelve el nombre y apellido paterno de una persona con un codigo
 app.get('/persona', function(req, res){
-	getPersona(req.query.code ,function(recordset){
+	getPersona(req.query.codigo ,function(recordset){
 		console.log(recordset);
 		var json = {};
 		json.persona = recordset;
-		res.send(json);
+		res.send(recordset[0]);
 		//res.send(recordset);
 	});
 });
@@ -64,7 +69,7 @@ app.get('/equipo', function(req, res){
 
 //Obetener todos los equipos registrados a un evento especifico
 app.get('/equipo/evento', function(req, res){
-	getEquipo(req.query.nombre, function(recordset){
+	getEquipoEvento(req.query.id, function(recordset){
 		console.log(recordset);
 		var json = {};
 		json.equipo = recordset;
@@ -133,20 +138,23 @@ app.get('/partido', function(req, res){
 	getPartido(function(recordset){
 		//console.log(recordset);
 		var response = [];
+		var json = {};
 		var j = 0;
 		for(var i = 0; i<recordset.length ; i=i+2)
 		{
+			json.equipo1 = recordset[i].equipo1;
+			json.horaInicio = recordset[i].horaInicio;
+			json.fecha = recordset[i].fecha;
+			json.equipo2 = recordset[i+1].equipo1;
+			json.puntaje = recordset[i].puntos + "-" + recordset[i+1].puntos;
 
-			response.push(recordset[i]);
-		//	console.log(response);
-			response[j].Equipo2 = recordset[i+1].Equipo1; 
-			j++;
+			response.push(json);
 		}
 		console.log(response);
-		var json = {};
-		json.partido = response;
-		res.send(json);
-		//res.send(response);
+		//var json = {};
+		//json.partido = response;
+		//res.send(json);
+		res.send(response);
 	});
 });
 
@@ -183,6 +191,16 @@ app.get('/disciplina/nombre', function(req, res){
 	});
 });
 
+
+//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+//FIN DE GETS
+//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+
+
+//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+//POSTS
+//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 //Insertar persona
 //app.post('/persona', function(req, res){
 //	insertPersona(req.body, function(recordset){
@@ -190,41 +208,54 @@ app.get('/disciplina/nombre', function(req, res){
 //	});
 //});
 
-//Llega el nombre del evento al que se va a registrar
+//Llega el id del evento(si Dios quiere, caso contrario el nombre en este caso estamos jodidos) al que se va a registrar
 app.post('/equipo', function(req, res){
 	insertEquipo(req.body, function(recordset){
 		console.log(recordset);
+		res.send("ok");
 	});
 });
 
 app.post('/evento', function(req, res){
 	insertEvento(req.body, function(recordset){
 		console.log(recordset);
+		res.send(ok);
 	});
 });
 
 app.post('/hora', function(req, res){
 	insertHora(req.body, function(recordset){
 		console.log(recordset);
+		res.send("ok")
 	});
 });
 
+
 app.post('/partido', function(req, res){
 	var idPartido = 0;
-
+	var equipo1Id = 0;
+	var equipo2Id = 0;
 	insertPartido(req.body, function(recordset){
-		console.log(recordset);
+		//console.log(recordset);
 	});
-
-
 
 	getMaxValue('idPartido', 'Partido', function(recordset){
 		idPartido = recordset[0].id;
 	});
 
-	insertEquipoPartido(idPartido,req.body, function(recordset){
+	getEquipoNombreExac(req.body.equipo1, function(recordset){
+		equipo1Id = recordset[0].idEquipo;
+	});
+
+	getEquipoNombreExac(req.body.equipo2, function(recordset){
+		equipo2Id = recordset[0].idEquipo;
+	});
+
+	insertEquipoPartido(idPartido, equipo1Id, equipo2Id, function(recordset){
 		console.log(recordset);
 	});
+
+	res.send("ok");
 
 });
 
@@ -233,6 +264,9 @@ app.post('/disciplina', function(req, res){
 		console.log(recordset);
 	});
 });
+//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+//FIN DE POSTS
+//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 //METODOS PARA OBTENER DATOS DE LA BASE DE DATOS
@@ -249,7 +283,7 @@ function getPersona(codigo, callback)
 		else
 		{
 			var request = new sql.Request(connection);
-			request.query("Select nombre,apellidopaterno,apellidomaterno from Persona where Persona.Codigo =" + codigo, function(err, recordset){
+			request.query("Select codigo, nombre, apellidoPaterno, apellidoMaterno from Persona where Persona.Codigo =" + codigo, function(err, recordset){
 				callback(recordset);
 				if (err) {
        				console.log(err);
@@ -306,6 +340,33 @@ function getEquipo(callback )
 	});
 };
 
+function getEquipoEvento(id, callback )
+{
+	
+	var connection = new sql.Connection(config, function(err){
+		if(err)
+		{
+			console.log(err);
+		}
+		else
+		{
+			var request = new sql.Request(connection);
+			request.query("SELECT        Equipo.nombre " +
+						  "FROM            Equipo INNER JOIN " +
+                          "EventoEquipo ON Equipo.idEquipo = EventoEquipo.idEquipo INNER JOIN "+
+                          "Evento ON EventoEquipo.idEvento = Evento.idEvento " +
+						  "where Evento.idEvento = " + id + ";", function(err, recordset){
+				callback(recordset);
+				if (err) {
+       				console.log(err);
+    			} else {
+        			console.log('Sin error');
+    			}
+			});
+		}
+	});
+};
+
 function getEquipoNombre(nombre,callback)
 {
 	
@@ -317,7 +378,30 @@ function getEquipoNombre(nombre,callback)
 		else
 		{
 			var request = new sql.Request(connection);
-			request.query("Select Equipo.Nombre from Equipo where Equipo.nombre like '%"+nombre+"%'" , function(err, recordset){
+			request.query("Select Equipo.idEquipo,Equipo.nombre from Equipo where Equipo.nombre like '%"+nombre+"%'" , function(err, recordset){
+				callback(recordset);
+				if (err) {
+       				console.log(err);
+    			} else {
+        			console.log('Sin error');
+    			}
+			});
+		}
+	});
+};
+
+function getEquipoNombreExac(nombre,callback)
+{
+	
+	var connection = new sql.Connection(config, function(err){
+		if(err)
+		{
+			console.log(err);
+		}
+		else
+		{
+			var request = new sql.Request(connection);
+			request.query("Select Equipo.idEquipo from Equipo where Equipo.nombre = '"+nombre+"'" , function(err, recordset){
 				callback(recordset);
 				if (err) {
        				console.log(err);
@@ -455,7 +539,7 @@ function getPartido(callback)
 		else
 		{
 			var request = new sql.Request(connection);
-			request.query("SELECT Equipo.Nombre as Equipo1, Hora.HoraInicio, Partido.Fecha" +
+			request.query("SELECT Equipo.Nombre as equipo1, Hora.horaInicio, Partido.fecha, puntos" +
                            " FROM Equipo INNER JOIN"+
 	                        " EquipoPartido ON Equipo.idEquipo = EquipoPartido.idEquipo INNER JOIN"+
                          	" Partido ON EquipoPartido.idPartido = Partido.idPartido INNER JOIN"+
@@ -482,7 +566,7 @@ function getPartidoNombre(equipo1, equipo2, callback)
 		{
 			var request = new sql.Request(connection);
 			request.query("Select * from "+
-							"(Select t1.Nombre as Equipo1, t1.HoraInicio, t1.Fecha, t2.Nombre as Equipo2 "+
+							"(Select t1.Nombre as equipo1, t1.horaInicio, t1.fecha, t2.Nombre as equipo2 "+
 							"from (Select * from "+
 							"(SELECT nombre, EquipoPartido.idPartido ,  Row_Number() OVER(ORDER BY EquipoPartido.idPartido) AS RowNumber, Hora.HoraInicio, Partido.Fecha "+
 							"FROM            Equipo INNER JOIN "+
@@ -559,7 +643,7 @@ function insertPersona(persona, callback)
 		else
 		{
 			var request = new sql.Request(connection);
-			request.query("Insert into Persona values(" + persona.nombre+","+ persona.ci+","+persona.celular+","+persona.email+","+persona.telefono+","+persona.habilitado+");", function(err, recordset){
+			request.query("Insert into Persona values('"+ persona.nombre+"',"+persona.apellidoPaterno+"',"+persona.apellidoMaterno+"',"+ persona.ci+","+persona.celular+",'"+persona.email+"',"+persona.telefono+");", function(err, recordset){
 				callback(recordset);
 				if (err) {
        				console.log(err);
@@ -582,7 +666,7 @@ function insertEquipo(equipo, callback)
 		else
 		{
 			var request = new sql.Request(connection);
-			request.query("Insert into Equipo values("+equipo.nombre+","+equipo.anio+","+equipo.idEvento+");" , function(err, recordset){
+			request.query("Insert into Equipo values('"+equipo.nombre+"',"+equipo.anio+");" , function(err, recordset){
 				callback(recordset);
 				if (err) {
        				console.log(err);
@@ -605,7 +689,7 @@ function insertEvento(evento, callback)
 		else
 		{
 			var request = new sql.Request(connection);
-			request.query("Insert into Equipo values("+evento.nombre+","+evento.descripcion+","+evento.fechainicio+","+evento.fechafin+","+evento.lugar+","+evento.horainicio+","+evento.disciplina+");" , function(err, recordset){
+			request.query("Insert into Equipo values('"+evento.nombre+"','"+evento.descripcion+"','"+evento.fechainicio+"','"+evento.lugar+"',"+evento.disciplina+");" , function(err, recordset){
 				callback(recordset);
 				if (err) {
        				console.log(err);
@@ -628,7 +712,7 @@ function insertHora(hora, callback)
 		else
 		{
 			var request = new sql.Request(connection);
-			request.query("Insert into Hora values("+hora.horainicio+","+hora.horafin+");" , function(err, recordset){
+			request.query("Insert into Hora values('"+hora.horainicio+"','"+hora.horafin+"'');" , function(err, recordset){
 				callback(recordset);
 				if (err) {
        				console.log(err);
@@ -651,35 +735,12 @@ function insertDisciplina(disciplina, callback)
 		else
 		{
 			var request = new sql.Request(connection);
-			request.query("Insert into Disciplina values("+disciplina.nombre+","+disciplina.maxInscripciones+");" , function(err, recordset){
+			request.query("Insert into Disciplina values('"+disciplina.nombre+"'');" , function(err, recordset){
 				callback(recordset);
 				if (err) {
        				console.log(err);
     			} else {
         			console.log('Creada disciplina ' + disciplina.nombre);
-    			}
-			});
-		}
-	});
-};
-
-function insertHistorial(historial, callback)
-{
-	
-	var connection = new sql.Connection(config, function(err){
-		if(err)
-		{
-			console.log(err);
-		}
-		else
-		{
-			var request = new sql.Request(connection);
-			request.query("Insert into Disciplina values("+historial.codigo+","+historial.descripcion+");" , function(err, recordset){
-				callback(recordset);
-				if (err) {
-       				console.log(err);
-    			} else {
-        			console.log('Creado el historial');
     			}
 			});
 		}
@@ -697,7 +758,7 @@ function insertPartido(partido, callback)
 		else
 		{
 			var request = new sql.Request(connection);
-			request.query("Insert into Partido values("+partido.fecha+","+partido.idhorario+");" , function(err, recordset){
+			request.query("Insert into Partido values("+partido.fecha+","+partido.idHorario+");" , function(err, recordset){
 				callback(recordset);
 				if (err) {
        				console.log(err);
@@ -712,37 +773,27 @@ function insertPartido(partido, callback)
 function insertEquipoPartido(idPartido, partido, callback)
 {
 	var i;
-	for(i = 0 ; i < partido.equipos.length ; i++){
-		var connection = new sql.Connection(config, function(err){
-			if(err)
-			{
-				console.log(err);
-			}
-			else
-			{
-				var request = new sql.Request(connection);
-				request.query("Insert into EquipoPartido values("+idPartido+","+partido.equipos[i]+", 0);" , function(err, recordset){
-					callback(recordset);
-					if (err) {
-	       				console.log(err);
-	    			} else {
-	        			console.log('Sin error');
-	    			}
-				});
-			}
-		});
-	}
+	var connection = new sql.Connection(config, function(err){
+		if(err)
+		{
+			console.log(err);
+		}
+		else
+		{
+			var request = new sql.Request(connection);
+			request.query("Insert into EquipoPartido values ("+idPartido+","+partido.equipo1+", 0),("+idPartido+","+partido.equipo2+", 0);" , function(err, recordset){
+				callback(recordset);
+				if (err) {
+       				console.log(err);
+    			} else {
+        			console.log('Sin error');
+    			}
+			});
+		}
+	});
+
 };
 
-/*
-{
-	idPartido:algo
-	fecha:algo
-	equipos: [
-				1,2,3,4...n
-				]
-}
-*/
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 //FIN DE LOS METODOS DE INSERCION EN LA ABSE DE DATOS
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
