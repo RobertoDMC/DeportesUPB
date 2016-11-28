@@ -31,13 +31,11 @@ var config = {
 	};
 
 app.get('/', function(req, res){
-			var partido = 0;
-			getMaxValue('idPartido', 'Partido', function(recordset){
+			console.log(req.query);
+			getId("idHorario","Hora", "horaInicio",req.query.horaInicio, function(recordset){
 				console.log(recordset);
-			partido = recordset[0].id;
-			console.log(partido);
-	});
-			res.end();
+			});
+			res.send("ok");
 });
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -62,19 +60,30 @@ app.get('/equipo', function(req, res){
 		console.log(recordset);
 		var json = {};
 		json.equipo = recordset;
-		res.send(json);
-		//res.send(recordset);
+		//res.send(json);
+		res.send(recordset);
+	});
+});
+
+//Obetener todos los equipos de un anio
+app.get('/equipo/actuales', function(req, res){
+	getEquipoActuales(function(recordset){
+		console.log(recordset);
+		var json = {};
+		json.equipo = recordset;
+		//res.send(json);
+		res.send(recordset);
 	});
 });
 
 //Obetener todos los equipos registrados a un evento especifico
 app.get('/equipo/evento', function(req, res){
-	getEquipoEvento(req.query.id, function(recordset){
+	getEquipoEvento(req.query.nombre, function(recordset){
 		console.log(recordset);
 		var json = {};
 		json.equipo = recordset;
-		res.send(json);
-		//res.send(recordset);
+		//res.send(json);
+		res.send(recordset);
 	});
 });
 
@@ -95,8 +104,8 @@ app.get('/evento', function(req, res){
 		console.log(recordset);
 		var json = {};
 		json.evento = recordset;
-		res.send(json);
-		//res.send(recordset);
+		//res.send(json);
+		res.send(recordset);
 	});
 });
 
@@ -210,10 +219,34 @@ app.get('/disciplina/nombre', function(req, res){
 
 //Llega el id del evento(si Dios quiere, caso contrario el nombre en este caso estamos jodidos) al que se va a registrar
 app.post('/equipo', function(req, res){
-	insertEquipo(req.body, function(recordset){
-		console.log(recordset);
-		res.send("ok");
+	var date = new Date();
+	var idEquipo = 0;
+	var idEvento = 0;
+	insertEquipo(req.body,date.getFullYear(), function(recordset){
+		//console.log(recordset);
+		getMaxValue('idEquipo', 'Equipo', function(recordset){
+			idEquipo = recordset[0].id;
+			getEventoNombre(req.body.evento,function(recordset){
+				console.log(recordset);
+			idEvento = recordset[0].idEvento;
+			console.log(idEquipo);
+			console.log(idEvento);
+				insertEventoEquipo(idEquipo, idEvento,function(recordset){
+
+				});
+			});
+
+		});	
 	});
+	res.send("ok");
+});	
+
+app.post('/equipo/persona', function(req, res){
+	getEquipoNombreExac(req.body.nombreEquipo, function(recordset){
+		insertEquipoPersona(recordset[0].idEquipo, req.body.codigo, function(recordset){
+		});
+	});
+	res.send("ok");
 });
 
 app.post('/evento', function(req, res){
@@ -235,24 +268,28 @@ app.post('/partido', function(req, res){
 	var idPartido = 0;
 	var equipo1Id = 0;
 	var equipo2Id = 0;
-	insertPartido(req.body, function(recordset){
-		//console.log(recordset);
-	});
+	var idHorario = 0;
 
-	getMaxValue('idPartido', 'Partido', function(recordset){
-		idPartido = recordset[0].id;
-	});
-
-	getEquipoNombreExac(req.body.equipo1, function(recordset){
-		equipo1Id = recordset[0].idEquipo;
-	});
-
-	getEquipoNombreExac(req.body.equipo2, function(recordset){
-		equipo2Id = recordset[0].idEquipo;
-	});
-
-	insertEquipoPartido(idPartido, equipo1Id, equipo2Id, function(recordset){
+	getId('idHorario', 'Hora',"horaInicio", req.body.horaInicio,function(recordset){
 		console.log(recordset);
+		idHorario = recordset[0].idHorario;
+			insertPartido(req.body,idHorario, function(recordset){
+		//console.log(recordset);
+		getMaxValue('idPartido', 'Partido', function(recordset){
+			idPartido = recordset[0].id;
+					getEquipoNombreExac(req.body.equipo1, function(recordset){
+					equipo1Id = recordset[0].idEquipo;
+					getEquipoNombreExac(req.body.equipo2, function(recordset){
+					equipo2Id = recordset[0].idEquipo;
+						console.log(idPartido);
+						insertEquipoPartido(idPartido, equipo1Id, equipo2Id, function(recordset){
+						//console.log(recordset);
+						});
+					});
+				});
+		});
+		
+		});
 	});
 
 	res.send("ok");
@@ -317,6 +354,28 @@ function getMaxValue(column, table_name, callback)
 	});
 };
 
+function getId(column, table, columnToSelect,value, callback)
+{
+	var connection = new sql.Connection(config, function(err){
+		if(err)
+		{
+			console.log(err);
+		}
+		else
+		{
+			var request = new sql.Request(connection);
+				request.query("Select " + column + " from " + table + " where "+ columnToSelect + " = '" + value+"';", function(err, recordset){
+				callback(recordset);
+				if (err) {
+       				console.log(err);
+    			} else {
+        			console.log('Sin error');
+    			}
+			});
+		}
+	});
+};
+
 function getEquipo(callback )
 {
 	
@@ -340,7 +399,31 @@ function getEquipo(callback )
 	});
 };
 
-function getEquipoEvento(id, callback )
+function getEquipoActuales(callback )
+{
+	var date = new Date();
+	var anio = date.getFullYear();
+	var connection = new sql.Connection(config, function(err){
+		if(err)
+		{
+			console.log(err);
+		}
+		else
+		{
+			var request = new sql.Request(connection);
+			request.query("Select * from Equipo where anio =" + anio +";", function(err, recordset){
+				callback(recordset);
+				if (err) {
+       				console.log(err);
+    			} else {
+        			console.log('Sin error');
+    			}
+			});
+		}
+	});
+};
+
+function getEquipoEvento(nombre, callback )
 {
 	
 	var connection = new sql.Connection(config, function(err){
@@ -355,7 +438,7 @@ function getEquipoEvento(id, callback )
 						  "FROM            Equipo INNER JOIN " +
                           "EventoEquipo ON Equipo.idEquipo = EventoEquipo.idEquipo INNER JOIN "+
                           "Evento ON EventoEquipo.idEvento = Evento.idEvento " +
-						  "where Evento.idEvento = " + id + ";", function(err, recordset){
+						  "where Evento.nombre = '" + nombre + "';", function(err, recordset){
 				callback(recordset);
 				if (err) {
        				console.log(err);
@@ -424,7 +507,7 @@ function getEvento(callback )
 		else
 		{
 			var request = new sql.Request(connection);
-			request.query("Select idEvento, nombre from Evento", function(err, recordset){
+			request.query("Select idEvento as id, nombre from Evento", function(err, recordset){
 				callback(recordset);
 				if (err) {
        				console.log(err);
@@ -470,7 +553,7 @@ function getEventoNombre(nombre, callback )
 		else
 		{
 			var request = new sql.Request(connection);
-			request.query("Select * from Evento where evento.nombre like '%"+nombre+"%'", function(err, recordset){
+			request.query("Select * from Evento where evento.nombre = '"+nombre+"'", function(err, recordset){
 				callback(recordset);
 				if (err) {
        				console.log(err);
@@ -655,7 +738,9 @@ function insertPersona(persona, callback)
 	});
 };
 
-function insertEquipo(equipo, callback)
+
+
+function insertEquipo(equipo, anio,callback)
 {
 	
 	var connection = new sql.Connection(config, function(err){
@@ -666,12 +751,34 @@ function insertEquipo(equipo, callback)
 		else
 		{
 			var request = new sql.Request(connection);
-			request.query("Insert into Equipo values('"+equipo.nombre+"',"+equipo.anio+");" , function(err, recordset){
+			request.query("Insert into Equipo values('"+ equipo.nombre +"',"+ anio +");" , function(err, recordset){
 				callback(recordset);
 				if (err) {
        				console.log(err);
     			} else {
         			console.log('Creado '+ equipo.nombre);
+    			}
+			});
+		}
+	});
+};
+
+function insertEquipoPersona(idEquipo, codigo, callback)
+{
+	var connection = new sql.Connection(config, function(err){
+		if(err)
+		{
+			console.log(err);
+		}
+		else
+		{
+			var request = new sql.Request(connection);
+			request.query("Insert into PersonaEquipo values("+ codigo +","+ idEquipo +");" , function(err, recordset){
+				callback(recordset);
+				if (err) {
+       				console.log(err);
+    			} else {
+        			console.log("Registrado la persona con exito");
     			}
 			});
 		}
@@ -747,7 +854,7 @@ function insertDisciplina(disciplina, callback)
 	});
 };
 
-function insertPartido(partido, callback)
+function insertPartido(partido, idHorario,callback)
 {
 	
 	var connection = new sql.Connection(config, function(err){
@@ -758,7 +865,7 @@ function insertPartido(partido, callback)
 		else
 		{
 			var request = new sql.Request(connection);
-			request.query("Insert into Partido values("+partido.fecha+","+partido.idHorario+");" , function(err, recordset){
+			request.query("Insert into Partido values('"+partido.fecha+"',"+idHorario+");" , function(err, recordset){
 				callback(recordset);
 				if (err) {
        				console.log(err);
@@ -769,8 +876,9 @@ function insertPartido(partido, callback)
 		}
 	});
 };
+//Funcion q obtiene de equipoPartido si es que ya hay un partido con ese id; en ese caso no hacer nada
 
-function insertEquipoPartido(idPartido, partido, callback)
+function insertEquipoPartido(idPartido, equipo1Id, equipo2Id, callback)
 {
 	var i;
 	var connection = new sql.Connection(config, function(err){
@@ -781,7 +889,7 @@ function insertEquipoPartido(idPartido, partido, callback)
 		else
 		{
 			var request = new sql.Request(connection);
-			request.query("Insert into EquipoPartido values ("+idPartido+","+partido.equipo1+", 0),("+idPartido+","+partido.equipo2+", 0);" , function(err, recordset){
+			request.query("Insert into EquipoPartido values ("+idPartido+","+equipo1Id+", 0),("+idPartido+","+equipo2Id+", 0);" , function(err, recordset){
 				callback(recordset);
 				if (err) {
        				console.log(err);
@@ -792,6 +900,30 @@ function insertEquipoPartido(idPartido, partido, callback)
 		}
 	});
 
+};
+
+function insertEventoEquipo(idEquipo, idEvento, callback)
+{
+	//console.log(idEquipo);
+	//console.log(idEvento);
+	var connection = new sql.Connection(config, function(err){
+		if(err)
+		{
+			console.log(err);
+		}
+		else
+		{
+			var request = new sql.Request(connection);
+			request.query("Insert into EventoEquipo values("+ idEvento +","+ idEquipo +");" , function(err, recordset){
+				callback(recordset);
+				if (err) {
+       				console.log(err);
+    			} else {
+        			console.log("Creado el Equipo con exito");
+    			}
+			});
+		}
+	});
 };
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
