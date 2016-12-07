@@ -224,6 +224,25 @@ app.post('/hora', function(req, res){
 	res.send("ok");
 });
 
+app.post('/partido/resultado', function(req, res){
+	var idPartido = 0;
+	var equipo1Id = 0;
+	var equipo2Id = 0;
+	var idHorario = 0;
+
+	var puntajes = req.body.puntaje.split(" ");
+	
+	getEquipoNombreExac(req.body.equipo1, function(recordset){
+		equipo1Id = recordset[0].idEquipo;
+		getEquipoNombreExac(req.body.equipo2, function(recordset){
+		equipo2Id = recordset[0].idEquipo;
+			insertResultado(idPartido, equipo1Id, equipo2Id,puntajes[0],puntajes[2], function(recordset){
+			});
+		});
+	});
+
+	res.send("ok");
+});
 
 app.post('/partido', function(req, res){
 	var idPartido = 0;
@@ -758,7 +777,7 @@ function insertEquipoPersona(idEquipo, codigo, callback)
 };
 
 //Funcion para registrar un evento
-function insertEvento(evento, callback)
+function insertEvento(evento)
 {
 	var connection = new sql.Connection(config, function(err){
 		if(err)
@@ -780,7 +799,7 @@ function insertEvento(evento, callback)
 };
 
 //Funcion para insertar horas establecidas por la coordinacion deportiva
-function insertHora(hora, callback)
+function insertHora(hora)
 {
 	var connection = new sql.Connection(config, function(err){
 		if(err)
@@ -887,6 +906,34 @@ function insertEventoEquipo(idEquipo, idEvento, callback)
        				console.log(err);
     			} else {
         			console.log("Creado el Equipo con exito");
+    			}
+			});
+		}
+	});
+};
+
+function insertResultado(idPartido, idEquipo1, idEquipo2, puntaje1, puntaje2)
+{
+	var connection = new sql.Connection(config, function(err){
+		if(err)
+		{
+			console.log(err);
+		}
+		else
+		{
+			var request = new sql.Request(connection);
+			request.query("Update EquipoPartido SET puntos = " + puntaje1 + " where idPartido =" + idPartido + "and idEquipo = " + idEquipo1 +";", function(err, recordset){
+				if (err) {
+       				console.log(err);
+    			} else {
+        			console.log("Sin Error");
+    			}
+			});
+			request.query("Update EquipoPartido SET puntos = " + puntaje2 + " where idPartido =" + idPartido + "and idEquipo = " + idEquipo2 +";", function(err, recordset){
+				if (err) {
+       				console.log(err);
+    			} else {
+        			console.log("Registrado el resultado del partido");
     			}
 			});
 		}
